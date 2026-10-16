@@ -1,0 +1,7 @@
+{
+    "test_loss": 5.458674621582031,
+    "test_perplexity": 234.786037711023,
+    "evaluated_tokens": 7680,
+    "vocabulary_size": 1000,
+    "sequence_length": 128
+}
