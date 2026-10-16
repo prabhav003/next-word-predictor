@@ -1,17 +1,16 @@
-import torch
 import torch.nn as nn
-import math
-import numpy as np
 
 
 class WordEmbedding(nn.Module):
 
-    def __init__(self, vocab_size, embedding_dim=512):
+    def __init__(self,vocab_size,embedding_dim=256,padding_idx=0):
         super().__init__()
 
-        self.embedding = nn.Embedding(num_embeddings=vocab_size,embedding_dim=embedding_dim)
+        self.embedding = nn.Embedding(
+            num_embeddings=vocab_size,
+            embedding_dim=embedding_dim,
+            padding_idx=padding_idx
+        )
 
     def forward(self, token_ids):
-        embeddings = self.embedding(token_ids)
-        return embeddings
-
+        return self.embedding(token_ids)
