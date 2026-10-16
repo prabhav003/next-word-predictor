@@ -34,7 +34,7 @@ max_sequence_length = 128
 batch_size = 16
 
 learning_rate = 3e-4
-epochs = 10
+epochs = 20
 
 pad_token_id = 0
 gradient_clip = 1.0
