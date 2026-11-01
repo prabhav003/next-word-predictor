@@ -1,106 +1,67 @@
-# Tiny Shakespeare Transformer
+# Next Word Predictor: Transformer Language Model
 
-A small decoder-only Transformer language model built from scratch using PyTorch. Trained on the Tiny Shakespeare dataset to learn next-token prediction and generate Shakespeare-style text.
+This directory contains a small decoder-only Transformer for next-token prediction. The latest experiment is documented in [`nextwordpredictor.ipynb`](nextwordpredictor.ipynb), which was run on Kaggle using a TinyStories text dataset and a Tesla T4 GPU. The Python scripts and checked-in data/checkpoints are an earlier Tiny Shakespeare experiment; their results are reported separately below.
 
-## Model Architecture
+## Kaggle notebook experiment
 
-- **Architecture:** Decoder-only Transformer
-- **Parameters:** 653,800
-- **Embedding dimension:** 128
-- **Attention heads:** 4
-- **Transformer layers:** 2
-- **Feed-forward dimension:** 512
-- **Context length:** 128 tokens
-- **Vocabulary size:** 1,000
+The notebook reads the `text` column from the TinyStories train and validation CSV files. It learns a byte-level BPE tokenizer from a training-text sample, then encodes the full training and validation splits. The model predicts the next token in story text; it does not perform a story-classification task.
 
-## Training Results
+### Model and training setup
 
-- **Epochs:** 20
-- **Training tokens:** 360,072
-- **Validation tokens:** 46,872
-- **Test tokens:** 48,659
-- **Training device:** Apple Silicon MPS
+- Decoder-only Transformer, **653,800 trainable parameters**
+- Embedding dimension 128, 4 attention heads, 2 layers, feed-forward dimension 512
+- Context length 128 tokens; BPE vocabulary size 1,000
+- Training split: **606,047,153 tokens** across 2,119,489 stories
+- Validation split: **6,089,728 tokens** across 21,990 stories
+- Batch size 32; AdamW at learning rate 0.0003; gradient clipping at 1.0
+- Up to 30 epochs, with at most 500 randomly sampled batches per epoch, a learning-rate scheduler, and early stopping
+- Runtime recorded in the notebook: about **378 seconds** on a Tesla T4
+
+### Recorded validation results
 
 | Metric | Result |
 |---|---:|
-| Final training loss | 3.5415 |
-| Best validation loss | 3.8885 |
-| Test loss | 3.9165 |
-| Test perplexity | 50.22 |
+| Best epoch | 30 |
+| Training loss at epoch 30 | 2.6013 |
+| Validation cross-entropy loss | 2.5976 |
+| Validation perplexity | 13.4318 |
+| Validation transitions evaluated | 6,089,727 of 6,089,727 |
 
-Training and validation losses decreased throughout the 20 epochs, indicating that the model learned statistical patterns from the training dataset.
+The notebook does **not** report classification accuracy. For a next-token language model, this run reports cross-entropy loss and perplexity instead. The validation loss fell from 7.0991 before training to 2.5976 after training. These are validation results, not a held-out test result.
 
-## Tech Stack
+The notebook's single displayed generation used the prompt “One morning, a little girl found a mysterious key.” The model immediately generated EOS, so the output contained no continuation. The improved validation perplexity therefore does not, by itself, establish that generated stories are consistently useful or coherent.
 
-- Python
-- PyTorch
-- NumPy
+### Run the notebook
 
-## Usage
+Open `nextwordpredictor.ipynb` in Kaggle with the required TinyStories CSV dataset attached. The notebook writes token arrays, tokenizer files, checkpoints, training history, and a generated sample under `/kaggle/working/`. Those Kaggle outputs are not included in this repository, so the notebook must be rerun to recreate them.
 
-Run the following commands from the project directory:
+## Local Tiny Shakespeare scripts
+
+The standalone scripts use the checked-in `data/` files and train/evaluate the earlier Shakespeare model. Run them from this directory:
 
 ```bash
-python preprocessing.py
-python train.py
-python evaluate.py
-python generate.py
+python3 preprocessing.py
+python3 train.py
+python3 evaluate.py
+python3 generate.py
 ```
 
-## Problems and Possible Solutions
+The checked-in evaluation reports test loss **3.9165**, test perplexity **50.22**, and **48,640** evaluated test targets. The final 19 transitions are dropped because the evaluator uses fixed 128-token chunks. These local results are separate from the Kaggle TinyStories notebook results above.
 
-- **Test perplexity of 50.22**
-  - Experiment with different model configurations, tokenization strategies, and training durations.
-  - Evaluate changes using validation loss.
+## Architecture
 
-- **Limited training data**
-  - Experiment with larger text corpora.
-  - Maintain separate training, validation, and test splits.
+The model is assembled from modules in this directory:
 
-- **Limited context length (128 tokens)**
-  - Experiment with longer context windows.
-  - Measure the impact on model performance and memory usage.
+- `embeddings.py`: learned token embeddings
+- `positional_encoding.py`: sinusoidal position encodings
+- `masked_multihead_attention.py`: causal multi-head self-attention
+- `add_norm.py` and `ffn.py`: residual normalization and feed-forward layers
+- `next_word_predictor.py`: decoder blocks and next-token output logits
 
-- **Potential overfitting**
-  - Monitor validation loss during training.
-  - Consider early stopping if validation performance stops improving.
+## Limitations and next steps
 
-- **Generation quality not systematically evaluated**
-  - Test multiple prompts.
-  - Inspect generated text for coherence, repetition, and premature termination.
-
-- **No baseline comparison**
-  - Compare the model against a simple baseline.
-  - Use the same dataset and evaluation procedure for fair comparison.
-
-- **19 test tokens not evaluated**
-  - Modify the evaluation pipeline to include the final incomplete sequence.
-  - Report the exact number of evaluated tokens.
-
-*These are potential issues and improvement directions. Not all have been confirmed as problems, and the proposed solutions have not yet been systematically tested.*
-
-## Future Scope
-
-- Experiment with larger Transformer architectures.
-- Compare different tokenization strategies and vocabulary sizes.
-- Implement learning-rate scheduling and gradient clipping.
-- Experiment with temperature and top-k sampling for text generation.
-- Track training experiments and compare model configurations.
-- Evaluate generated text using consistent prompts and documented criteria.
-- Investigate longer context windows and their impact on next-token prediction.
-
-## Limitations
-
-- The model has a relatively small number of parameters.
-- Training is restricted to a small Shakespeare text corpus.
-- Generated text quality has not yet been systematically evaluated.
-- No baseline comparison has been conducted.
-- Test perplexity alone does not establish the coherence or quality of generated text.
-
-## Conclusion
-
-This project implements a small decoder-only Transformer language model using PyTorch and trains it for next-token prediction on the Tiny Shakespeare dataset.
-
-After 20 epochs, the model achieved a training loss of **3.5415**, a best validation loss of **3.8885**, and a test loss of **3.9165**, with a test perplexity of **50.22**.
-
-The project establishes a working training and evaluation pipeline. Future work will focus on improving generation quality, experimenting with model configurations, and conducting systematic comparisons against baseline models.
+- The Kaggle run uses a large corpus, but samples at most 500 batches per epoch; it does not exhaust the full training split each epoch.
+- There is no held-out TinyStories test evaluation or baseline comparison in the notebook.
+- Generation has only one recorded prompt, and that sample terminated immediately. Evaluate multiple prompts and tune EOS/sampling behavior before drawing conclusions about generation quality.
+- The notebook contains its own tokenizer and model definitions alongside the standalone modules. Keeping these implementations in sync would reduce maintenance errors.
+- The local scripts use the older Shakespeare data and should not be treated as evidence for the TinyStories notebook's performance.
